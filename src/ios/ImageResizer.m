@@ -2,6 +2,8 @@
 #import <Cordova/CDV.h>
 #import <Cordova/CDVPluginResult.h>
 #import <AssetsLibrary/AssetsLibrary.h>
+#import <ImageIO/ImageIO.h>
+#import <MobileCoreServices/MobileCoreServices.h>
 
 #define PROTONET_PHOTO_PREFIX @"protonet_"
 #define TIMESTAMP [NSString stringWithFormat:@"%f",[[NSDate date] timeIntervalSince1970] * 1000]
@@ -114,27 +116,38 @@
     }
     
     UIGraphicsEndImageContext();
-    NSData *imageData = UIImageJPEGRepresentation(tempImage, [quality floatValue] / 100.0f );
+    
+    CGFloat finalQuality = [quality floatValue] / 100.0f;
+    
     NSArray *paths = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES);
     NSString *cachesDirectory = [paths objectAtIndex:0];
+    
     BOOL isDir = NO;
+    
     NSError *error;
+    
     if (! [[NSFileManager defaultManager] fileExistsAtPath:cachesDirectory isDirectory:&isDir] && isDir == NO) {
         [[NSFileManager defaultManager] createDirectoryAtPath:cachesDirectory withIntermediateDirectories:NO attributes:nil error:&error];
     }
+    
     NSString *imagePath =[cachesDirectory stringByAppendingPathComponent:[NSString stringWithFormat:@"img%@.jpeg", TIMESTAMP]];
     CDVPluginResult* result = nil;
     
     if (asBase64) {
+        NSData *imageData = UIImageJPEGRepresentation(tempImage, finalQuality);
         NSData *imageBase64 = [imageData base64EncodedDataWithOptions:NSDataBase64Encoding64CharacterLineLength];
         NSString *imageBase64String = [[NSString alloc] initWithData:imageBase64 encoding:NSUTF8StringEncoding];
         NSString *imageBase64URL = [NSString stringWithFormat:@"%@%@", @"data:image/jpeg;base64,", imageBase64String];
         result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:imageBase64URL];
     }
-    else if (![imageData writeToFile:imagePath atomically:NO])
+    else if (![self writeProgressiveJPEGtoFile:imagePath image:tempImage quality:finalQuality error:&error])
     {
-        result = [CDVPluginResult resultWithStatus:CDVCommandStatus_IO_EXCEPTION messageAsString:@"error save image"];
+        result = [CDVPluginResult resultWithStatus:CDVCommandStatus_IO_EXCEPTION messageAsString:[error localizedDescription]];
     }
+//    else if (![imageData writeToFile:imagePath atomically:NO])
+//    {
+//        result = [CDVPluginResult resultWithStatus:CDVCommandStatus_IO_EXCEPTION messageAsString:@"error save image"];
+//    }
     else
     {
         result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:[[NSURL fileURLWithPath:imagePath] absoluteString]];
@@ -163,6 +176,41 @@
     UIImage *newImage = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
     return newImage;
+}
+
+- (BOOL) writeProgressiveJPEGtoFile:(NSString*)path image:(UIImage*)image quality:(CGFloat)quality error:(NSError**) error
+{
+    CFURLRef url = (__bridge CFURLRef)[NSURL fileURLWithPath:path];
+    
+    CGImageDestinationRef destination = CGImageDestinationCreateWithURL(url, kUTTypePNG, 1, NULL);
+    if (!destination) {
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:[NSString stringWithFormat:@"Failed to create CGImageDestination for %@", path] forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:@"world" code:200 userInfo:details];
+        return NO;
+    }
+    
+    NSDictionary *jfifProperties = [NSDictionary dictionaryWithObjectsAndKeys:
+                                    (__bridge id)kCFBooleanTrue, kCGImagePropertyJFIFIsProgressive,
+                                    nil];
+    
+    NSDictionary *properties = [NSDictionary dictionaryWithObjectsAndKeys:
+                                [NSNumber numberWithFloat:quality], kCGImageDestinationLossyCompressionQuality,
+                                jfifProperties, kCGImagePropertyJFIFDictionary,
+                                nil];
+    
+    CGImageDestinationAddImage(destination, image.CGImage, (__bridge CFDictionaryRef)properties);
+    
+    if (!CGImageDestinationFinalize(destination)) {
+        NSMutableDictionary* details = [NSMutableDictionary dictionary];
+        [details setValue:[NSString stringWithFormat:@"Failed to write image to %@", path] forKey:NSLocalizedDescriptionKey];
+        *error = [NSError errorWithDomain:@"world" code:200 userInfo:details];
+        CFRelease(destination);
+        return NO;
+    }
+    
+    CFRelease(destination);
+    return YES;
 }
 
 @end
