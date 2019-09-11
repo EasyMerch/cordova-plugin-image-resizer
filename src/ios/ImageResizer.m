@@ -26,7 +26,6 @@
     NSLog(@"Image Resizer Image URL : %@",imageUrlString);
     
     NSString* quality = [arguments objectForKey:@"quality"];
-    CGSize frameSize = CGSizeMake([[arguments objectForKey:@"width"] floatValue], [[arguments objectForKey:@"height"] floatValue]);
     NSString* fileName = [arguments objectForKey:@"fileName"];
     
     BOOL asBase64 = [[arguments objectForKey:@"base64"] boolValue];
@@ -37,7 +36,7 @@
         sourceImage = [UIImage imageWithData: [[NSFileManager defaultManager] contentsAtPath:imageUrlString]];
     }else {
         sourceImage = [UIImage imageWithData: [NSData dataWithContentsOfURL: [NSURL URLWithString:imageUrlString]]];
-    }    
+    }
     
     int rotation = 0;
     
@@ -77,7 +76,6 @@
     NSLog(@"image resizer:%@",  (sourceImage ? @"image exists" : @"null" ));
     
     UIImage *tempImage = nil;
-    CGSize targetSize = frameSize;
     
     CGRect thumbnailRect = CGRectMake(0, 0, 0, 0);
     thumbnailRect.origin = CGPointMake(0.0,0.0);
@@ -87,6 +85,20 @@
     CGFloat heightInPixels = heightInPoints * sourceImage.scale;
     CGFloat widthInPoints = sourceImage.size.width;
     CGFloat widthInPixels = widthInPoints * sourceImage.scale;
+    
+    CGFloat requestedWidth = [[arguments objectForKey:@"width"] floatValue];
+    CGFloat requestedHeight = [[arguments objectForKey:@"height"] floatValue];
+    
+    CGFloat finalWidth = widthInPixels;
+    CGFloat finalHeight = heightInPixels;
+    
+    if (requestedWidth > 0 || requestedHeight > 0) {
+        finalWidth = requestedWidth;
+        finalHeight = requestedHeight;
+
+    }
+    
+    CGSize targetSize = CGSizeMake(finalWidth, finalHeight);
     
     // calculate the target dimensions in a way that preserves the original aspect ratio
     CGFloat newWidth = targetSize.width;
@@ -144,10 +156,6 @@
     {
         result = [CDVPluginResult resultWithStatus:CDVCommandStatus_IO_EXCEPTION messageAsString:[error localizedDescription]];
     }
-//    else if (![imageData writeToFile:imagePath atomically:NO])
-//    {
-//        result = [CDVPluginResult resultWithStatus:CDVCommandStatus_IO_EXCEPTION messageAsString:@"error save image"];
-//    }
     else
     {
         result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:[[NSURL fileURLWithPath:imagePath] absoluteString]];
@@ -182,7 +190,7 @@
 {
     CFURLRef url = (__bridge CFURLRef)[NSURL fileURLWithPath:path];
     
-    CGImageDestinationRef destination = CGImageDestinationCreateWithURL(url, kUTTypePNG, 1, NULL);
+    CGImageDestinationRef destination = CGImageDestinationCreateWithURL(url, kUTTypeJPEG, 1, NULL);
     if (!destination) {
         NSMutableDictionary* details = [NSMutableDictionary dictionary];
         [details setValue:[NSString stringWithFormat:@"Failed to create CGImageDestination for %@", path] forKey:NSLocalizedDescriptionKey];

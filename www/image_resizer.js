@@ -4,7 +4,7 @@ var ImageResizer = function () {
 ImageResizer.prototype.resize = function (options, success, fail) {
     var defaultOptions = {
         fileName: 'image_resizer_' + Date.now() + '.jpg',
-        quality: 90
+        quality: 100
     };
 
     options.fileName = options.fileName || defaultOptions.fileName;
