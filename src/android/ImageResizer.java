@@ -39,6 +39,7 @@ public class ImageResizer extends CordovaPlugin {
     private boolean fit = false;
     private boolean fixRotation = false;
 
+    private static String UPLOAD_DIR = "/upload-dir";
 
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
         try {
@@ -63,9 +64,10 @@ public class ImageResizer extends CordovaPlugin {
                 if (jsonObject.has("fileName")) {
                     fileName = jsonObject.getString("fileName");
                 }
+
                 quality = jsonObject.optInt("quality", 85);
-                width = jsonObject.getInt("width");
-                height = jsonObject.getInt("height");
+                width = jsonObject.optInt("width", -1);
+                height = jsonObject.optInt("height", -1);
 
                 base64 = jsonObject.optBoolean("base64", false);
                 fit = jsonObject.optBoolean("fit", false);
@@ -130,6 +132,7 @@ public class ImageResizer extends CordovaPlugin {
             }
         } catch (JSONException e) {
             Log.e("Protonet", "JSON Exception during the Image Resizer Plugin... :(");
+            e.printStackTrace();
         }
         callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR));
         return false;
@@ -156,8 +159,8 @@ public class ImageResizer extends CordovaPlugin {
 
             float ratio = sourceWidth > sourceHeight ? ((float) width / sourceWidth) : ((float) height / sourceHeight);
 
-            int execWidth = width;
-            int execHeigth = height;
+            int execWidth = width > 0 ? width : sourceWidth;
+            int execHeigth = height > 0 ? height : sourceHeight;
 
             if (fit) {
                 execWidth = Math.round(ratio * sourceWidth);
@@ -177,31 +180,31 @@ public class ImageResizer extends CordovaPlugin {
         return null;
     }
     /**
-    * Gets the image rotation from the image EXIF Data
-    *
-    * @param exifOrientation ExifInterface.ORIENTATION_* representation of the rotation
-    * @return the rotation in degrees
-    */
+     * Gets the image rotation from the image EXIF Data
+     *
+     * @param exifOrientation ExifInterface.ORIENTATION_* representation of the rotation
+     * @return the rotation in degrees
+     */
     private int getRoationDegrees(int exifOrientation){
-      if (exifOrientation == ExifInterface.ORIENTATION_ROTATE_90) { return 90; }
-      else if (exifOrientation == ExifInterface.ORIENTATION_ROTATE_180) {  return 180; }
-      else if (exifOrientation == ExifInterface.ORIENTATION_ROTATE_270) {  return 270; }
-      return 0;
+        if (exifOrientation == ExifInterface.ORIENTATION_ROTATE_90) { return 90; }
+        else if (exifOrientation == ExifInterface.ORIENTATION_ROTATE_180) {  return 180; }
+        else if (exifOrientation == ExifInterface.ORIENTATION_ROTATE_270) {  return 270; }
+        return 0;
     }
 
     /**
-    * Gets the image rotation from the image EXIF Data
-    *
-    * @param uriString the URI of the image to get the rotation for
-    * @return ExifInterface.ORIENTATION_* representation of the rotation
-    */
+     * Gets the image rotation from the image EXIF Data
+     *
+     * @param uriString the URI of the image to get the rotation for
+     * @return ExifInterface.ORIENTATION_* representation of the rotation
+     */
     private int getRotation(String uriString){
-      try {
-        ExifInterface exif = new ExifInterface(uriString);
-        return exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
-      } catch (IOException e) {
-        return ExifInterface.ORIENTATION_NORMAL;
-      }
+        try {
+            ExifInterface exif = new ExifInterface(uriString);
+            return exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
+        } catch (IOException e) {
+            return ExifInterface.ORIENTATION_NORMAL;
+        }
     }
 
     /**
@@ -218,8 +221,11 @@ public class ImageResizer extends CordovaPlugin {
             //calc aspect ratio
             int[] retval = calculateAspectRatio(options.outWidth, options.outHeight);
 
+            int execWidth = width > 0 ? width : options.outWidth;
+            int execHeigth = height > 0 ? height : options.outHeight;
+
             options.inJustDecodeBounds = false;
-            options.inSampleSize = calculateSampleSize(options.outWidth, options.outHeight, width, height);
+            options.inSampleSize = calculateSampleSize(options.outWidth, options.outHeight, execWidth, execHeigth);
             Bitmap unscaledBitmap = BitmapFactory.decodeStream(FileHelper.getInputStreamFromUriString(uriString, cordova), null, options);
             return Bitmap.createScaledBitmap(unscaledBitmap, retval[0], retval[1], true);
         } catch (FileNotFoundException e) {
@@ -246,7 +252,7 @@ public class ImageResizer extends CordovaPlugin {
         }
         boolean success = true;
         if (!folder.exists()) {
-            success = folder.mkdir();
+            success = folder.mkdirs();
         }
 
         if (success) {
@@ -345,18 +351,19 @@ public class ImageResizer extends CordovaPlugin {
     }
 
     private String getTempDirectoryPath() {
-        File cache = null;
+        String path;
 
         // SD Card Mounted
-        if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
-            cache = new File(Environment.getExternalStorageDirectory().getAbsolutePath() +
-                    "/Android/data/" + cordova.getActivity().getPackageName() + "/cache/");
+        if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED) && Environment.isExternalStorageRemovable()) {
+            path = Environment.getExternalStorageDirectory().getAbsolutePath() +
+                    "/Android/data/" + cordova.getActivity().getPackageName() + "/cache"  + UPLOAD_DIR;
         } else {
             // Use internal storage
-            cache = cordova.getActivity().getCacheDir();
+            path = cordova.getActivity().getCacheDir().getPath() + UPLOAD_DIR;
         }
 
         // Create the cache directory if it doesn't exist
+        File cache = new File(path);
         cache.mkdirs();
         return cache.getAbsolutePath();
     }
