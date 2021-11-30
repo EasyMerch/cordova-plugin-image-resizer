@@ -34,7 +34,8 @@ public class ImageResizer extends CordovaPlugin {
     private int quality;
     private int width;
     private int height;
-
+	
+    private boolean isFileUri = false;
     private boolean base64 = false;
     private boolean fit = false;
     private boolean fixRotation = false;
@@ -45,8 +46,6 @@ public class ImageResizer extends CordovaPlugin {
         try {
             this.callbackContext = callbackContext;
 
-            boolean isFileUri = false;
-
             if (action.equals("resize")) {
                 checkParameters(args);
 
@@ -54,7 +53,7 @@ public class ImageResizer extends CordovaPlugin {
                 JSONObject jsonObject = args.getJSONObject(0);
                 uri = jsonObject.getString("uri");
 
-                isFileUri = !uri.startsWith("data") ? true : false;
+                isFileUri = !uri.startsWith("data");
 
                 folderName = null;
                 if (jsonObject.has("folderName")) {
@@ -269,6 +268,20 @@ public class ImageResizer extends CordovaPlugin {
             } catch (Exception e) {
                 Log.e("Protonet", e.toString());
             }
+
+			try{
+				if(isFileUri){
+					String realUri = FileHelper.getRealPath(uri, cordova);
+					ExifInterface origExif = new ExifInterface(realUri);
+					ExifInterface fileExif = new ExifInterface(file);
+					Log.i("DEBUG", String.format("TAG_ORIENTATION=%s", origExif.getAttribute(ExifInterface.TAG_ORIENTATION)));
+					fileExif.setAttribute(ExifInterface.TAG_ORIENTATION, origExif.getAttribute(ExifInterface.TAG_ORIENTATION));
+					fileExif.saveAttributes();
+				}
+			} catch(IOException e) {
+                Log.e("Protonet", e.toString());
+			}
+
             return Uri.fromFile(file);
         }
         return null;
