@@ -284,8 +284,9 @@ public class ImageResizer extends CordovaPlugin {
 			try{
 				if(isFileUri){
 					String realUri = FileHelper.getRealPath(uri, cordova);
+					String reaFilelUri = FileHelper.getRealPath(file.getAbsolutePath(), cordova);
 					ExifInterface origExif = new ExifInterface(realUri);
-					ExifInterface fileExif = new ExifInterface(file);
+					ExifInterface fileExif = new ExifInterface(reaFilelUri);
 					Log.i("DEBUG", String.format("TAG_ORIENTATION=%s", origExif.getAttribute(ExifInterface.TAG_ORIENTATION)));
 					fileExif.setAttribute(ExifInterface.TAG_ORIENTATION, origExif.getAttribute(ExifInterface.TAG_ORIENTATION));
 					fileExif.saveAttributes();
