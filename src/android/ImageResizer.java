@@ -81,22 +81,6 @@ public class ImageResizer extends CordovaPlugin {
                     bitmap = this.loadBase64ScaledBitmapFromUri(uri, width, height, fit);
                 }
 
-                if(fixRotation){
-                    // Get the exif rotation in degrees, create a transformation matrix, and rotate
-                    // the bitmap
-                    int rotation = getRoationDegrees(getRotation(uri));
-                    Matrix matrix = new Matrix();
-                    if (rotation != 0f) {matrix.preRotate(rotation);}
-                    bitmap = Bitmap.createBitmap(
-                            bitmap,
-                            0,
-                            0,
-                            bitmap.getWidth(),
-                            bitmap.getHeight(),
-                            matrix,
-                            true);
-                }
-
                 if(bitmap == null){
                     Log.e("Protonet", "There was an error reading the image");
                     callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR));
@@ -117,6 +101,23 @@ public class ImageResizer extends CordovaPlugin {
                         return false;
                     }
                 } else {
+
+					if(fixRotation){
+						// Get the exif rotation in degrees, create a transformation matrix, and rotate
+						// the bitmap
+						int rotation = getRoationDegrees(getRotation(uri));
+						Matrix matrix = new Matrix();
+						if (rotation != 0f) {matrix.preRotate(rotation);}
+						bitmap = Bitmap.createBitmap(
+								bitmap,
+								0,
+								0,
+								bitmap.getWidth(),
+								bitmap.getHeight(),
+								matrix,
+								true);
+					}
+					
                     response =  "data:image/jpeg;base64," + this.getStringImage(bitmap, quality);
                 }
 
