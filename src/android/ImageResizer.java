@@ -72,60 +72,14 @@ public class ImageResizer extends CordovaPlugin {
                 fit = jsonObject.optBoolean("fit", false);
                 fixRotation = jsonObject.optBoolean("fixRotation",false);
 
-                Bitmap bitmap;
-                // load the image from uri
-                if (isFileUri) {
-                    bitmap = loadScaledBitmapFromUri(uri, width, height);
-
-                } else {
-                    bitmap = this.loadBase64ScaledBitmapFromUri(uri, width, height, fit);
-                }
-
-                if(bitmap == null){
-                    Log.e("Protonet", "There was an error reading the image");
-                    callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR));
-                    return false;
-                }
-
-
-                String response;
-
-
-                // save the image as jpeg on the device
-                if (!base64) {
-                    Uri scaledFile = saveFile(bitmap);
-                    response = scaledFile.toString();
-                    if(scaledFile == null){
-                        Log.e("Protonet", "There was an error saving the thumbnail");
-                        callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR));
-                        return false;
-                    }
-                } else {
-
-					if(fixRotation){
-						// Get the exif rotation in degrees, create a transformation matrix, and rotate
-						// the bitmap
-						int rotation = getRoationDegrees(getRotation(uri));
-						Matrix matrix = new Matrix();
-						if (rotation != 0f) {matrix.preRotate(rotation);}
-						bitmap = Bitmap.createBitmap(
-								bitmap,
-								0,
-								0,
-								bitmap.getWidth(),
-								bitmap.getHeight(),
-								matrix,
-								true);
+				cordova.getThreadPool().execute(new Runnable() {
+					@Override
+					public void run() {
+						resize();
 					}
-					
-                    response =  "data:image/jpeg;base64," + this.getStringImage(bitmap, quality);
-                }
+				});
 
-                bitmap = null;
-
-                callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK, response));
-
-                return true;
+				return true;
             } else {
                 callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR));
                 return false;
@@ -137,6 +91,63 @@ public class ImageResizer extends CordovaPlugin {
         callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR));
         return false;
     }
+
+	public boolean resize(){
+		Bitmap bitmap;
+		// load the image from uri
+		if (isFileUri) {
+			bitmap = loadScaledBitmapFromUri(uri, width, height);
+
+		} else {
+			bitmap = this.loadBase64ScaledBitmapFromUri(uri, width, height, fit);
+		}
+
+		if(bitmap == null){
+			Log.e("Protonet", "There was an error reading the image");
+			callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR));
+			return false;
+		}
+
+		String response;
+
+
+		// save the image as jpeg on the device
+		if (!base64) {
+			Uri scaledFile = saveFile(bitmap);
+			response = scaledFile.toString();
+			if(scaledFile == null){
+				Log.e("Protonet", "There was an error saving the thumbnail");
+				callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR));
+				return false;
+			}
+		} else {
+
+			if(fixRotation){
+				// Get the exif rotation in degrees, create a transformation matrix, and rotate
+				// the bitmap
+				int rotation = getRoationDegrees(getRotation(uri));
+				Matrix matrix = new Matrix();
+				if (rotation != 0f) {matrix.preRotate(rotation);}
+				bitmap = Bitmap.createBitmap(
+						bitmap,
+						0,
+						0,
+						bitmap.getWidth(),
+						bitmap.getHeight(),
+						matrix,
+						true);
+			}
+			
+			response =  "data:image/jpeg;base64," + this.getStringImage(bitmap, quality);
+		}
+
+		bitmap = null;
+
+		callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK, response));
+
+		return true;
+	}
+
     public String getStringImage(Bitmap bmp, int quality) {
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
