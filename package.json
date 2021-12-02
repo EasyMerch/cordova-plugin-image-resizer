@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/JoschkaSchulz/cordova-plugin-image-resizer"
+    "url": "git+https://github.com/Lordovik/cordova-plugin-image-resizer"
   },
   "keywords": [
     "ecosystem:cordova",
@@ -27,7 +27,7 @@
   "author": "",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/JoschkaSchulz/cordova-plugin-image-resizer/issues"
+    "url": "https://github.com/Lordovik/cordova-plugin-image-resizer/issues"
   },
-  "homepage": "https://github.com/JoschkaSchulz/cordova-plugin-image-resizer#readme"
+  "homepage": "https://github.com/Lordovik/cordova-plugin-image-resizer#readme"
 }
