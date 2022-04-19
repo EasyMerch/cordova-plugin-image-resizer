@@ -26,7 +26,6 @@ import java.io.IOException;
 
 public class ImageResizer extends CordovaPlugin {
     private static final int ARGUMENT_NUMBER = 1;
-    public CallbackContext callbackContext;
 
     private String uri;
     private String folderName;
@@ -44,10 +43,9 @@ public class ImageResizer extends CordovaPlugin {
 
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
         try {
-            this.callbackContext = callbackContext;
 
             if (action.equals("resize")) {
-                checkParameters(args);
+                checkParameters(args, callbackContext);
 
                 // get the arguments
                 JSONObject jsonObject = args.getJSONObject(0);
@@ -75,7 +73,7 @@ public class ImageResizer extends CordovaPlugin {
 				cordova.getThreadPool().execute(new Runnable() {
 					@Override
 					public void run() {
-						resize();
+						resize(callbackContext);
 					}
 				});
 
@@ -92,7 +90,7 @@ public class ImageResizer extends CordovaPlugin {
         return false;
     }
 
-	public boolean resize(){
+	public boolean resize(CallbackContext callbackContext){
 		Bitmap bitmap;
 		// load the image from uri
 		if (isFileUri) {
@@ -368,7 +366,7 @@ public class ImageResizer extends CordovaPlugin {
         return retval;
     }
 
-    private boolean checkParameters(JSONArray args) {
+    private boolean checkParameters(JSONArray args, CallbackContext callbackContext) {
         if (args.length() != ARGUMENT_NUMBER) {
             callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.INVALID_ACTION));
             return false;
